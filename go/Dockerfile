@@ -16,7 +16,7 @@ RUN set -eux; \
         CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o "/out/$name" "./$dir"; \
     done
 
-FROM alpine:3.20
+FROM alpine:3.23
 RUN apk add --no-cache ca-certificates
 COPY --from=build /out/ /usr/local/bin/
 COPY go/entrypoint.sh /usr/local/bin/entrypoint.sh
