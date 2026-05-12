@@ -38,6 +38,8 @@ func run(ctx context.Context) error {
 	})
 
 	fmt.Printf("exchange=%s  rows=%d\n", exchange, snap.Count)
+	fmt.Println()
+	fmt.Printf("%-16s  %11s  %4s\n", "base", "rate", "intv")
 
 	limit := len(rows)
 	if limit > 10 {
@@ -45,7 +47,7 @@ func run(ctx context.Context) error {
 	}
 	for i := 0; i < limit; i++ {
 		row := rows[i]
-		fmt.Printf("%s  rate=%g  interval=%dh\n",
+		fmt.Printf("%-16s  %+11.6f  %3dh\n",
 			row.Base, row.FundingRate, row.FundingIntervalHours)
 	}
 	return nil

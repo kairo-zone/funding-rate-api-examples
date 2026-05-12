@@ -41,30 +41,28 @@ func run(ctx context.Context) error {
 
 	rows := append([]client.FundingEntry(nil), snap.Data...)
 	if len(rows) == 0 {
-		fmt.Printf("no rows for base=%s\n", base)
-		return nil
+		return &client.ClientLogicError{Message: fmt.Sprintf("no rows for base=%s", base)}
 	}
 
 	sort.SliceStable(rows, func(i, j int) bool {
 		if rows[i].FundingRate != rows[j].FundingRate {
 			return rows[i].FundingRate < rows[j].FundingRate
 		}
-		if rows[i].Exchange != rows[j].Exchange {
-			return rows[i].Exchange < rows[j].Exchange
-		}
-		return rows[i].Base < rows[j].Base
+		return rows[i].Exchange < rows[j].Exchange
 	})
 
+	fmt.Printf("%-12s  %11s  %9s  %4s\n", "exchange", "rate", "ann%", "intv")
 	for _, row := range rows {
 		ann := annualizedPct(row.FundingRate, row.FundingIntervalHours)
-		fmt.Printf("%s  rate=%g  ann=%.2f%%  interval=%dh\n",
+		fmt.Printf("%-12s  %+11.6f  %+8.4f%%  %3dh\n",
 			row.Exchange, row.FundingRate, ann, row.FundingIntervalHours)
 	}
 
 	minRow := rows[0]
 	maxRow := rows[len(rows)-1]
 	spread := maxRow.FundingRate - minRow.FundingRate
-	fmt.Printf("spread = %g (max %s @ %g, min %s @ %g)\n",
+	fmt.Println()
+	fmt.Printf("spread = %+.6f  (max %s @ %+.6f, min %s @ %+.6f)\n",
 		spread, maxRow.Exchange, maxRow.FundingRate, minRow.Exchange, minRow.FundingRate)
 	return nil
 }

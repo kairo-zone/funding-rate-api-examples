@@ -11,8 +11,16 @@ function annualizedPct(row: FundingEntry): number {
   return row.fundingRate * (24 / row.fundingIntervalHours) * 365 * 100;
 }
 
+function signed(value: number, decimals: number): string {
+  return (value >= 0 ? "+" : "") + value.toFixed(decimals);
+}
+
 function formatRow(row: FundingEntry): string {
-  return `${row.exchange}  ${row.base}  rate=${row.fundingRate}  ann=${annualizedPct(row).toFixed(4)}%`;
+  const ann = annualizedPct(row);
+  return (
+    `${row.exchange.padEnd(12)}  ${row.base.padEnd(10)}  ` +
+    `${signed(row.fundingRate, 6).padStart(11)}  ${signed(ann, 4).padStart(8)}%`
+  );
 }
 
 async function main(): Promise<void> {
@@ -39,9 +47,16 @@ async function main(): Promise<void> {
     )
     .slice(0, 10);
 
+  const header =
+    `${"exchange".padEnd(12)}  ${"base".padEnd(10)}  ` +
+    `${"rate".padStart(11)}  ${"ann%".padStart(9)}`;
+
   process.stdout.write("TOP 10 POSITIVE\n");
+  process.stdout.write(`${header}\n`);
   for (const row of positives) process.stdout.write(`${formatRow(row)}\n`);
-  process.stdout.write("\nBOTTOM 10 NEGATIVE\n");
+  process.stdout.write("\n");
+  process.stdout.write("BOTTOM 10 NEGATIVE\n");
+  process.stdout.write(`${header}\n`);
   for (const row of negatives) process.stdout.write(`${formatRow(row)}\n`);
 }
 

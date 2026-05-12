@@ -5,9 +5,29 @@
 
 import { FundingClient } from "../client.js";
 import { cliEntry } from "../runner.js";
+import type { FundingEntry } from "../types.js";
 
 const MAX_ITERATIONS = 5;
 const SLEEP_MS = 30_000;
+
+function signed(value: number, decimals: number): string {
+  return (value >= 0 ? "+" : "") + value.toFixed(decimals);
+}
+
+function printRows(rows: readonly FundingEntry[]): void {
+  process.stdout.write(
+    `${"exchange".padEnd(12)}  ${"base".padEnd(10)}  ${"rate".padStart(11)}  ` +
+      `${"next_ms".padStart(13)}  ${"intv".padStart(4)}\n`,
+  );
+  for (const row of rows) {
+    process.stdout.write(
+      `${row.exchange.padEnd(12)}  ${row.base.padEnd(10)}  ` +
+        `${signed(row.fundingRate, 6).padStart(11)}  ` +
+        `${String(row.nextFundingTimeMs).padStart(13)}  ` +
+        `${String(row.fundingIntervalHours).padStart(3)}h\n`,
+    );
+  }
+}
 
 /** Returns a promise that resolves after `ms` or when the abort signal fires. */
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -44,12 +64,7 @@ async function main(): Promise<number> {
       process.stdout.write(`tick ${i}: no change (version=${delta.version})\n`);
     } else {
       process.stdout.write(`tick ${i}: ${delta.count} changes, version=${delta.version}\n`);
-      for (const row of delta.data) {
-        process.stdout.write(
-          `${row.exchange}  ${row.base}  rate=${row.fundingRate}  ` +
-            `next=${row.nextFundingTimeMs}  interval=${row.fundingIntervalHours}h\n`,
-        );
-      }
+      printRows(delta.data);
     }
     cursor = delta.version;
   }

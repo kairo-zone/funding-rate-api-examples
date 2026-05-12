@@ -8,6 +8,10 @@ import { ClientLogicError } from "../errors.js";
 import { cliEntry } from "../runner.js";
 import type { FundingEntry } from "../types.js";
 
+function signed(value: number, decimals: number): string {
+  return (value >= 0 ? "+" : "") + value.toFixed(decimals);
+}
+
 async function postWebhook(url: string, row: FundingEntry): Promise<void> {
   const body = JSON.stringify({
     exchange: row.exchange,
@@ -35,11 +39,21 @@ async function main(): Promise<number> {
   const snap = await client.getSnapshot();
 
   let matched = 0;
+  let headerPrinted = false;
   for (const row of snap.data) {
     if (Math.abs(row.fundingRate) < threshold) continue;
+    if (!headerPrinted) {
+      process.stdout.write(
+        `${"status".padEnd(7)}  ${"exchange".padEnd(12)}  ${"base".padEnd(10)}  ` +
+          `${"rate".padStart(11)}  ${"next_ms".padStart(13)}\n`,
+      );
+      headerPrinted = true;
+    }
     matched++;
     process.stdout.write(
-      `ALERT  ${row.exchange}  ${row.base}  rate=${row.fundingRate}  next=${row.nextFundingTimeMs}\n`,
+      `${"ALERT".padEnd(7)}  ${row.exchange.padEnd(12)}  ${row.base.padEnd(10)}  ` +
+        `${signed(row.fundingRate, 6).padStart(11)}  ` +
+        `${String(row.nextFundingTimeMs).padStart(13)}\n`,
     );
     if (webhookUrl) {
       try {
