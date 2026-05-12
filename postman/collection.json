@@ -1,0 +1,429 @@
+{
+  "info": {
+    "_postman_id": "a1f9c2e7-4d6b-4a8b-9e1c-1f0f5b7a3d21",
+    "name": "kairo.zone Funding API",
+    "description": "Live perpetual funding rates from 10 exchanges (Bybit, MEXC, AsterDEX, Hyperliquid, Binance, Gate, Bitget, BingX, OKX, KuCoin) under a single normalized schema.\n\nResponses default to a compact positional shape; pass `compact=false` for named-object rows. Use the monotonically-increasing `version` field with `since` for delta polling, or with `If-None-Match` for conditional GET.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      { "key": "key", "value": "X-Api-Key", "type": "string" },
+      { "key": "value", "value": "{{api_key}}", "type": "string" },
+      { "key": "in", "value": "header", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "base_url", "value": "{{base_url}}", "type": "string" },
+    { "key": "api_key", "value": "{{api_key}}", "type": "string" },
+    { "key": "version", "value": "", "type": "string", "description": "Populated by the first snapshot request via a test script. Used as the cursor for delta and conditional GET requests." }
+  ],
+  "item": [
+    {
+      "name": "Funding",
+      "description": "Funding-rate snapshots and deltas.",
+      "item": [
+        {
+          "name": "GET /v1/funding - full snapshot (compact)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/funding",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "funding"]
+            },
+            "description": "Full snapshot in compact (positional) shape. Use as the default polling call. The test script captures `version` for downstream requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has version, count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"version\");",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});",
+                  "pm.collectionVariables.set(\"version\", body.version);"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK (compact)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": { "raw": "{{base_url}}/v1/funding", "host": ["{{base_url}}"], "path": ["v1", "funding"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" },
+                { "key": "ETag", "value": "\"1712304000042\"" },
+                { "key": "X-Funding-Version", "value": "1712304000042" }
+              ],
+              "body": "{\n  \"version\": 1712304000042,\n  \"timestamp_ms\": 1712304000123,\n  \"count\": 2,\n  \"data\": [\n    [\"bybit\", \"BTC\", 0.0001, 1712304000000, 8, 1712299900000],\n    [\"binance\", \"ETH\", 0.00012, 1712304000000, 8, 1712299900000]\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/funding - full snapshot (object)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/funding?compact=false",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "funding"],
+              "query": [
+                { "key": "compact", "value": "false" }
+              ]
+            },
+            "description": "Full snapshot in named-object shape. Use when you want self-describing rows at the cost of larger payloads."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has version, count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"version\");",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK (object)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": { "raw": "{{base_url}}/v1/funding?compact=false", "host": ["{{base_url}}"], "path": ["v1", "funding"], "query": [{ "key": "compact", "value": "false" }] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"version\": 1712304000042,\n  \"timestamp_ms\": 1712304000123,\n  \"count\": 1,\n  \"data\": [\n    {\n      \"exchange\": \"bybit\",\n      \"base\": \"BTC\",\n      \"funding_rate\": 0.0001,\n      \"next_funding_time_ms\": 1712304000000,\n      \"funding_interval_hours\": 8,\n      \"event_time_ms\": 1712299900000\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/funding - by exchange",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/funding?exchange=bybit",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "funding"],
+              "query": [
+                { "key": "exchange", "value": "bybit" }
+              ]
+            },
+            "description": "Snapshot filtered to one exchange. Valid values: bybit, mexc, asterdex, hyperliquid, binance, gate, bitget, bingx, okx, kucoin."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has version, count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"version\");",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/funding - by base",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/funding?base=BTC",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "funding"],
+              "query": [
+                { "key": "base", "value": "BTC" }
+              ]
+            },
+            "description": "Cross-exchange rows for a single base asset. Useful for spread scanning."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has version, count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"version\");",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/funding - by base list",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/funding?base=BTC,ETH,SOL",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "funding"],
+              "query": [
+                { "key": "base", "value": "BTC,ETH,SOL" }
+              ]
+            },
+            "description": "Snapshot filtered to a comma-separated watchlist of base assets."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has version, count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"version\");",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/funding - single symbol",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/funding?exchange=bybit&base=BTC",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "funding"],
+              "query": [
+                { "key": "exchange", "value": "bybit" },
+                { "key": "base", "value": "BTC" }
+              ]
+            },
+            "description": "Single-row lookup for one (exchange, base) pair."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has version, count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"version\");",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/funding - delta since cursor",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/funding?since={{version}}",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "funding"],
+              "query": [
+                { "key": "since", "value": "{{version}}" }
+              ]
+            },
+            "description": "Delta poll. Returns only rows whose version is strictly greater than `since`. Run the compact snapshot request first so `{{version}}` is populated."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const v = pm.collectionVariables.get(\"version\");",
+                  "if (!v) {",
+                  "    console.warn(\"version is empty; run the 'full snapshot (compact)' request first to populate the cursor.\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has version, count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"version\");",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/funding - conditional GET",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "If-None-Match", "value": "\"{{version}}\"" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/funding",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "funding"]
+            },
+            "description": "Conditional GET. Returns 304 Not Modified when the server's ETag still matches `{{version}}`, otherwise returns 200 with a fresh snapshot. Run the compact snapshot request first."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200 or 304\", () => pm.expect([200, 304]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Symbols",
+      "description": "Symbol universe and metadata.",
+      "item": [
+        {
+          "name": "GET /v1/symbols - all",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/symbols",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "symbols"]
+            },
+            "description": "Full enabled symbol universe with normalization metadata."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": { "raw": "{{base_url}}/v1/symbols", "host": ["{{base_url}}"], "path": ["v1", "symbols"] }
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"count\": 2,\n  \"data\": [\n    {\n      \"exchange\": \"bybit\",\n      \"symbol\": \"BTC-USDT\",\n      \"base\": \"BTC\",\n      \"quote\": \"USDT\",\n      \"native\": \"BTCUSDT\",\n      \"type\": \"linear_perpetual\",\n      \"funding_interval_hours\": 8,\n      \"is_active\": true\n    },\n    {\n      \"exchange\": \"binance\",\n      \"symbol\": \"ETH-USDT\",\n      \"base\": \"ETH\",\n      \"quote\": \"USDT\",\n      \"native\": \"ETHUSDT\",\n      \"type\": \"linear_perpetual\",\n      \"funding_interval_hours\": 8,\n      \"is_active\": true\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET /v1/symbols - by exchange",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/v1/symbols?exchange=bybit",
+              "host": ["{{base_url}}"],
+              "path": ["v1", "symbols"],
+              "query": [
+                { "key": "exchange", "value": "bybit" }
+              ]
+            },
+            "description": "Symbol universe filtered to one exchange."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"has count, data\", () => {",
+                  "    pm.expect(body).to.have.property(\"count\");",
+                  "    pm.expect(body).to.have.property(\"data\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

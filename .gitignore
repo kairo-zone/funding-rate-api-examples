@@ -427,3 +427,23 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# ---------------------------------------------------------------------------
+# funding-rate-api-examples: language-specific
+# ---------------------------------------------------------------------------
+
+# Local secrets (do not commit)
+.env
+
+# Python
+python/.venv/
+python/*.egg-info/
+
+# TypeScript / Node
+typescript/dist/
+
+# Go
+go/bin/
+
+# Output of example 09 (export_csv)
+funding_*.csv
