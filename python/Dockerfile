@@ -18,7 +18,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install dependencies first for better layer caching.
-COPY pyproject.toml ./
+COPY pyproject.toml README.md ./
 COPY kairo_funding ./kairo_funding
 COPY examples ./examples
 

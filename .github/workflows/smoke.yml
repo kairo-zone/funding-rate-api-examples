@@ -2,7 +2,9 @@ name: Smoke
 
 # End-to-end smoke test: builds each language image and runs example 01
 # against the production API. Requires the `KAIRO_FUNDING_API_KEY` repo
-# secret. Without the secret, all jobs short-circuit gracefully.
+# secret. Without the secret, all jobs short-circuit gracefully via the
+# `prep` job's output (the `secrets` context is not allowed in job-level
+# `if` conditionals — checking secret presence must happen inside a step).
 
 on:
   workflow_dispatch:
@@ -12,8 +14,6 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
 
 concurrency:
   group: smoke
@@ -21,10 +21,29 @@ concurrency:
 
 jobs:
 
+  prep:
+    name: "Smoke · prep"
+    runs-on: ubuntu-latest
+    outputs:
+      has_key: ${{ steps.check.outputs.has_key }}
+    steps:
+      - id: check
+        env:
+          API_KEY: ${{ secrets.KAIRO_FUNDING_API_KEY }}
+        run: |
+          if [ -n "$API_KEY" ]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+            echo "KAIRO_FUNDING_API_KEY is set; smoke jobs will run."
+          else
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::KAIRO_FUNDING_API_KEY secret is not set; smoke jobs will be skipped."
+          fi
+
   python:
     name: "Smoke · python"
+    needs: prep
+    if: needs.prep.outputs.has_key == 'true'
     runs-on: ubuntu-latest
-    if: ${{ secrets.KAIRO_FUNDING_API_KEY != '' }}
     env:
       KAIRO_FUNDING_API_KEY: ${{ secrets.KAIRO_FUNDING_API_KEY }}
     steps:
@@ -47,8 +66,9 @@ jobs:
 
   typescript:
     name: "Smoke · typescript"
+    needs: prep
+    if: needs.prep.outputs.has_key == 'true'
     runs-on: ubuntu-latest
-    if: ${{ secrets.KAIRO_FUNDING_API_KEY != '' }}
     env:
       KAIRO_FUNDING_API_KEY: ${{ secrets.KAIRO_FUNDING_API_KEY }}
     steps:
@@ -71,8 +91,9 @@ jobs:
 
   go:
     name: "Smoke · go"
+    needs: prep
+    if: needs.prep.outputs.has_key == 'true'
     runs-on: ubuntu-latest
-    if: ${{ secrets.KAIRO_FUNDING_API_KEY != '' }}
     env:
       KAIRO_FUNDING_API_KEY: ${{ secrets.KAIRO_FUNDING_API_KEY }}
     steps:
@@ -95,8 +116,9 @@ jobs:
 
   csharp:
     name: "Smoke · csharp"
+    needs: prep
+    if: needs.prep.outputs.has_key == 'true'
     runs-on: ubuntu-latest
-    if: ${{ secrets.KAIRO_FUNDING_API_KEY != '' }}
     env:
       KAIRO_FUNDING_API_KEY: ${{ secrets.KAIRO_FUNDING_API_KEY }}
     steps:
@@ -119,9 +141,9 @@ jobs:
 
   summary:
     name: "Smoke · summary"
+    needs: [prep, python, typescript, go, csharp]
+    if: always() && needs.prep.outputs.has_key == 'true'
     runs-on: ubuntu-latest
-    needs: [python, typescript, go, csharp]
-    if: always()
     steps:
       - name: Compose summary
         id: status
@@ -131,21 +153,14 @@ jobs:
             && [ "${{ needs.go.result }}" = "success" ] \
             && [ "${{ needs.csharp.result }}" = "success" ]; then
             echo "msg=smoke ok" >> "$GITHUB_OUTPUT"
-            echo "ok=true" >> "$GITHUB_OUTPUT"
           else
             echo "msg=smoke failed (py=${{ needs.python.result }} ts=${{ needs.typescript.result }} go=${{ needs.go.result }} cs=${{ needs.csharp.result }})" >> "$GITHUB_OUTPUT"
-            echo "ok=false" >> "$GITHUB_OUTPUT"
           fi
-          echo "${{ steps.status.outputs.msg }}"
 
-      - name: Post status comment
-        uses: actions/github-script@v7
+      - name: Write job summary
         continue-on-error: true
+        uses: actions/github-script@v7
         with:
           script: |
             const msg = `${{ steps.status.outputs.msg }}`;
             core.summary.addRaw(`Smoke result: ${msg}`).write();
-            // For scheduled runs there is no PR/issue to comment on, so we
-            // only post a comment when a related issue number is supplied
-            // via dispatch input (omitted here) - the job summary above is
-            // always written. This keeps the step non-blocking.
