@@ -143,7 +143,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FundingSnapshotResponse'
+                description: |
+                  Compact when `compact=true` (default), object when
+                  `compact=false`. A single response always uses one shape
+                  — rows never mix.
+                oneOf:
+                  - $ref: '#/components/schemas/FundingSnapshotResponseCompact'
+                  - $ref: '#/components/schemas/FundingSnapshotResponseObject'
               examples:
                 compact:
                   summary: Compact (default) response shape.
@@ -277,9 +283,12 @@ components:
       description: Alternative. Send your API key as the `key` query parameter. The header wins if both are present.
 
   schemas:
-    FundingSnapshotResponse:
+    FundingSnapshotEnvelope:
       type: object
-      description: A funding-rate snapshot (or delta, when `since` is provided).
+      description: |
+        Common envelope fields shared by the compact and object snapshot
+        shapes. Concrete responses extend this schema by adding a typed
+        `data` array.
       required:
         - version
         - count
@@ -300,13 +309,38 @@ components:
           minimum: 0
           description: Number of rows in `data`.
           example: 1
-        data:
-          type: array
-          description: Snapshot rows. Each row is either a positional array (compact, default) or a named object (`compact=false`).
-          items:
-            oneOf:
-              - $ref: '#/components/schemas/FundingEntryCompact'
-              - $ref: '#/components/schemas/FundingEntryObject'
+
+    FundingSnapshotResponseCompact:
+      description: |
+        Snapshot response when `compact=true` (default). Each row in `data`
+        is a fixed-length positional array — see `FundingEntryCompact`.
+      allOf:
+        - $ref: '#/components/schemas/FundingSnapshotEnvelope'
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              description: Snapshot rows as positional tuples.
+              items:
+                $ref: '#/components/schemas/FundingEntryCompact'
+
+    FundingSnapshotResponseObject:
+      description: |
+        Snapshot response when `compact=false`. Each row in `data` is a
+        named JSON object — see `FundingEntryObject`.
+      allOf:
+        - $ref: '#/components/schemas/FundingSnapshotEnvelope'
+        - type: object
+          required:
+            - data
+          properties:
+            data:
+              type: array
+              description: Snapshot rows as named objects.
+              items:
+                $ref: '#/components/schemas/FundingEntryObject'
 
     FundingEntryCompact:
       type: array
