@@ -1,0 +1,458 @@
+openapi: 3.1.0
+info:
+  title: Funding API
+  version: 1.0.0
+  summary: Live perpetual funding rates from 10 exchanges.
+  description: |
+    The kairo.zone Funding API exposes the current funding-rate snapshot
+    across major perpetual-swap venues (Bybit, MEXC, AsterDEX, Hyperliquid,
+    Binance, Gate, Bitget, BingX, OKX, KuCoin) under a single normalized
+    schema.
+
+    Responses default to a compact positional representation to minimize
+    payload size; pass `compact=false` to receive named-object rows. Use
+    the monotonically-increasing `version` field together with the
+    `since` query parameter for delta polling, or with `If-None-Match`
+    for conditional GET.
+  contact:
+    name: kairo.zone Funding API
+    email: api@kairo.zone
+    url: https://kairo.zone
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: https://api.kairo.zone
+    description: Production
+
+security:
+  - ApiKeyHeader: []
+  - ApiKeyQuery: []
+
+tags:
+  - name: funding
+    description: Funding-rate snapshots and deltas.
+  - name: symbols
+    description: Symbol universe and metadata.
+
+paths:
+  /v1/funding:
+    get:
+      tags: [funding]
+      summary: Get the current funding-rate snapshot.
+      description: |
+        Returns the full snapshot of funding rates across all enabled
+        exchanges. Combine the `since`, `exchange`, `base`, and `compact`
+        query parameters to filter and shape the response.
+
+        When `since` is provided, only entries whose internal version is
+        greater than the supplied value are returned (delta polling). A
+        `version` from any prior response can be reused as the `since`
+        cursor.
+
+        Strong validators (`ETag`, `X-Funding-Version`) are emitted on
+        every response so clients can use `If-None-Match` for conditional
+        GET.
+      operationId: getFunding
+      parameters:
+        - name: since
+          in: query
+          description: Return only entries whose version is strictly greater than this value.
+          required: false
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          example: 1712304000000
+        - name: exchange
+          in: query
+          description: Filter by exchange name (lowercase).
+          required: false
+          schema:
+            type: string
+            enum:
+              - bybit
+              - mexc
+              - asterdex
+              - hyperliquid
+              - binance
+              - gate
+              - bitget
+              - bingx
+              - okx
+              - kucoin
+          example: bybit
+        - name: base
+          in: query
+          description: Filter by base asset. Accepts a comma-separated list.
+          required: false
+          schema:
+            type: string
+          example: BTC,ETH,SOL
+        - name: compact
+          in: query
+          description: |
+            When `true` (default), each entry in `data` is a positional
+            JSON array: `[exchange, base, funding_rate,
+            next_funding_time_ms, funding_interval_hours, event_time_ms]`.
+            When `false`, each entry is a named JSON object.
+          required: false
+          schema:
+            type: boolean
+            default: true
+        - name: If-None-Match
+          in: header
+          description: Conditional GET. Set to a previously-received `ETag` to receive `304 Not Modified` when nothing has changed.
+          required: false
+          schema:
+            type: string
+          example: '"1712304000042"'
+        - name: Accept-Encoding
+          in: header
+          description: Set to `br` to receive a Brotli-compressed response body.
+          required: false
+          schema:
+            type: string
+          example: br
+      responses:
+        '200':
+          description: Funding snapshot (or delta when `since` is set).
+          headers:
+            ETag:
+              description: Strong validator equal to the current `version`, quoted.
+              schema:
+                type: string
+              example: '"1712304000042"'
+            X-Funding-Version:
+              description: The same `version` value as in the response body.
+              schema:
+                type: integer
+                format: int64
+              example: 1712304000042
+            Cache-Control:
+              description: CDN-friendly cache directive.
+              schema:
+                type: string
+              example: public, s-maxage=2, stale-while-revalidate=1
+            Content-Encoding:
+              description: Present and set to `br` when the client requested Brotli encoding.
+              schema:
+                type: string
+              example: br
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FundingSnapshotResponse'
+              examples:
+                compact:
+                  summary: Compact (default) response shape.
+                  value:
+                    version: 1712304000042
+                    timestamp_ms: 1712304000123
+                    count: 1
+                    data:
+                      - ["bybit", "BTC", 0.0001, 1712304000000, 8, 1712299900000]
+                object:
+                  summary: Object response shape (`compact=false`).
+                  value:
+                    version: 1712304000042
+                    timestamp_ms: 1712304000123
+                    count: 1
+                    data:
+                      - exchange: bybit
+                        base: BTC
+                        funding_rate: 0.0001
+                        next_funding_time_ms: 1712304000000
+                        funding_interval_hours: 8
+                        event_time_ms: 1712299900000
+                empty_delta:
+                  summary: Empty delta (no changes since cursor).
+                  value:
+                    version: 42
+                    count: 0
+                    data: []
+        '304':
+          description: Not modified. Returned when `If-None-Match` matches the current `ETag`.
+          headers:
+            ETag:
+              schema:
+                type: string
+              example: '"1712304000042"'
+            X-Funding-Version:
+              schema:
+                type: integer
+                format: int64
+              example: 1712304000042
+        '401':
+          description: Missing or invalid API key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: invalid_api_key
+                message: API key is missing or invalid
+        '429':
+          description: Rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: rate_limited
+                message: Rate limit exceeded
+
+  /v1/symbols:
+    get:
+      tags: [symbols]
+      summary: List the enabled symbol universe.
+      description: |
+        Returns the set of symbols currently tracked by the service, along
+        with normalization metadata. Pair this endpoint with `/v1/funding`
+        to map an `(exchange, base)` row back to its native exchange
+        symbol string.
+      operationId: getSymbols
+      parameters:
+        - name: exchange
+          in: query
+          description: Filter by exchange name (lowercase).
+          required: false
+          schema:
+            type: string
+            enum:
+              - bybit
+              - mexc
+              - asterdex
+              - hyperliquid
+              - binance
+              - gate
+              - bitget
+              - bingx
+              - okx
+              - kucoin
+          example: bybit
+      responses:
+        '200':
+          description: Symbol universe.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SymbolsResponse'
+              example:
+                count: 1
+                data:
+                  - exchange: bybit
+                    symbol: BTC-USDT
+                    base: BTC
+                    quote: USDT
+                    native: BTCUSDT
+                    type: linear_perpetual
+                    funding_interval_hours: 8
+                    is_active: true
+        '401':
+          description: Missing or invalid API key.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: Preferred. Send your API key as the `X-Api-Key` request header.
+    ApiKeyQuery:
+      type: apiKey
+      in: query
+      name: key
+      description: Alternative. Send your API key as the `key` query parameter. The header wins if both are present.
+
+  schemas:
+    FundingSnapshotResponse:
+      type: object
+      description: A funding-rate snapshot (or delta, when `since` is provided).
+      required:
+        - version
+        - count
+        - data
+      properties:
+        version:
+          type: integer
+          format: int64
+          description: Monotonically-increasing snapshot version. Use as the `since` cursor for the next call.
+          example: 1712304000042
+        timestamp_ms:
+          type: integer
+          format: int64
+          description: Server time (Unix milliseconds, UTC) when the snapshot was assembled. Omitted on empty deltas.
+          example: 1712304000123
+        count:
+          type: integer
+          minimum: 0
+          description: Number of rows in `data`.
+          example: 1
+        data:
+          type: array
+          description: Snapshot rows. Each row is either a positional array (compact, default) or a named object (`compact=false`).
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/FundingEntryCompact'
+              - $ref: '#/components/schemas/FundingEntryObject'
+
+    FundingEntryCompact:
+      type: array
+      description: |
+        Positional row used when `compact=true` (default). The slots, in order,
+        are: `exchange`, `base`, `funding_rate`, `next_funding_time_ms`,
+        `funding_interval_hours`, `event_time_ms`.
+      minItems: 6
+      maxItems: 6
+      prefixItems:
+        - type: string
+          description: Exchange name (lowercase).
+          example: bybit
+        - type: string
+          description: Base asset symbol.
+          example: BTC
+        - type: number
+          format: double
+          description: Funding rate as a decimal fraction per funding period (e.g. `0.0001` = 0.01%).
+          example: 0.0001
+        - type: integer
+          format: int64
+          description: Time of the next funding event (Unix milliseconds, UTC).
+          example: 1712304000000
+        - type: integer
+          minimum: 1
+          description: Funding interval in whole hours. Typically 1, 4, or 8.
+          example: 8
+        - type: integer
+          format: int64
+          description: Source event time at the exchange (Unix milliseconds, UTC).
+          example: 1712299900000
+      items: false
+
+    FundingEntryObject:
+      type: object
+      description: Named row used when `compact=false`.
+      required:
+        - exchange
+        - base
+        - funding_rate
+        - next_funding_time_ms
+        - funding_interval_hours
+        - event_time_ms
+      properties:
+        exchange:
+          type: string
+          description: Exchange name (lowercase).
+          example: bybit
+        base:
+          type: string
+          description: Base asset symbol.
+          example: BTC
+        funding_rate:
+          type: number
+          format: double
+          description: Funding rate as a decimal fraction per funding period. Positive means longs pay shorts.
+          example: 0.0001
+        next_funding_time_ms:
+          type: integer
+          format: int64
+          description: Time of the next funding event (Unix milliseconds, UTC).
+          example: 1712304000000
+        funding_interval_hours:
+          type: integer
+          minimum: 1
+          description: Funding interval in whole hours.
+          example: 8
+        event_time_ms:
+          type: integer
+          format: int64
+          description: Source event time at the exchange (Unix milliseconds, UTC).
+          example: 1712299900000
+
+    SymbolsResponse:
+      type: object
+      required:
+        - count
+        - data
+      properties:
+        count:
+          type: integer
+          minimum: 0
+          example: 847
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Symbol'
+
+    Symbol:
+      type: object
+      required:
+        - exchange
+        - symbol
+        - base
+        - quote
+        - native
+        - type
+        - funding_interval_hours
+        - is_active
+      properties:
+        exchange:
+          type: string
+          example: bybit
+        symbol:
+          type: string
+          description: Normalized symbol in the form `<base>-<quote>`.
+          example: BTC-USDT
+        base:
+          type: string
+          example: BTC
+        quote:
+          type: string
+          example: USDT
+        native:
+          type: string
+          description: Native exchange symbol string.
+          example: BTCUSDT
+        type:
+          type: string
+          enum:
+            - linear_perpetual
+            - inverse_perpetual
+          example: linear_perpetual
+        funding_interval_hours:
+          type: integer
+          minimum: 1
+          example: 8
+        is_active:
+          type: boolean
+          example: true
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Stable machine-readable error code.
+          enum:
+            - invalid_api_key
+            - rate_limited
+          example: invalid_api_key
+        message:
+          type: string
+          description: Human-readable error description.
+          example: API key is missing or invalid

@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "kairo-funding-examples"
+version = "0.1.0"
+description = "Python examples for the kairo.zone Funding API."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "kairo.zone" }]
+keywords = ["kairo", "funding", "perpetual", "crypto"]
+
+dependencies = [
+    "httpx[brotli,http2]>=0.27,<1.0",
+]
+
+[project.urls]
+Homepage = "https://kairo.zone"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kairo_funding"]

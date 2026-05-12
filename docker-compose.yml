@@ -1,0 +1,81 @@
+# kairo.zone Funding API - language examples.
+#
+# Each service wraps the per-language Dockerfile and runs example 01
+# (the quickstart) by default. Drop your API key into `.env` (see
+# `.env.example`) and then invoke a service explicitly, e.g.:
+#
+#   docker compose run --rm python
+#   docker compose run --rm typescript
+#   docker compose run --rm go
+#   docker compose run --rm csharp
+#
+# The `smoke` profile prevents `docker compose up` from starting all four
+# services at once - users opt in per language via `run --rm <service>`.
+
+services:
+
+  # Python examples. Build context is `python/` (matches python/README.md).
+  # Run a different example:
+  #   docker compose run --rm python python examples/04_spread_scanner.py
+  python:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    image: kairo-funding-py:local
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      KAIRO_FUNDING_API_KEY: ${KAIRO_FUNDING_API_KEY:-}
+      KAIRO_FUNDING_BASE_URL: ${KAIRO_FUNDING_BASE_URL:-https://api.kairo.zone}
+    profiles: ["smoke"]
+
+  # TypeScript examples. Build context is `typescript/` (matches typescript/README.md).
+  # Run a different example:
+  #   docker compose run --rm typescript npx tsx src/examples/04_spread_scanner.ts
+  typescript:
+    build:
+      context: ./typescript
+      dockerfile: Dockerfile
+    image: kairo-funding-ts:local
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      KAIRO_FUNDING_API_KEY: ${KAIRO_FUNDING_API_KEY:-}
+      KAIRO_FUNDING_BASE_URL: ${KAIRO_FUNDING_BASE_URL:-https://api.kairo.zone}
+    profiles: ["smoke"]
+
+  # Go examples. Build context is the repo root (the Dockerfile COPYs `go/...`).
+  # The entrypoint resolves the example by stem.
+  # Run a different example:
+  #   docker compose run --rm go 04_spread_scanner
+  go:
+    build:
+      context: .
+      dockerfile: go/Dockerfile
+    image: kairo-funding-go:local
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      KAIRO_FUNDING_API_KEY: ${KAIRO_FUNDING_API_KEY:-}
+      KAIRO_FUNDING_BASE_URL: ${KAIRO_FUNDING_BASE_URL:-https://api.kairo.zone}
+    profiles: ["smoke"]
+
+  # C# examples. Build context is the repo root (the Dockerfile COPYs `csharp/`).
+  # The dispatcher takes the example key as its first arg.
+  # Run a different example:
+  #   docker compose run --rm csharp 04_spread_scanner
+  csharp:
+    build:
+      context: .
+      dockerfile: csharp/Dockerfile
+    image: kairo-funding-cs:local
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      KAIRO_FUNDING_API_KEY: ${KAIRO_FUNDING_API_KEY:-}
+      KAIRO_FUNDING_BASE_URL: ${KAIRO_FUNDING_BASE_URL:-https://api.kairo.zone}
+    profiles: ["smoke"]

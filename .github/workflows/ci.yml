@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  python:
+    name: "Python · py_compile"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package
+        working-directory: python
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
+
+      - name: Syntax-check all Python sources
+        run: |
+          files="$(git ls-files 'python/**/*.py')"
+          if [ -z "$files" ]; then
+            echo "no python files found"
+            exit 1
+          fi
+          # shellcheck disable=SC2086
+          python -m py_compile $files
+
+  typescript:
+    name: "TypeScript · tsc --noEmit"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+
+      - name: Install dependencies
+        working-directory: typescript
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Type-check
+        working-directory: typescript
+        run: npx tsc --noEmit
+
+  go:
+    name: "Go · vet + build"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+          cache-dependency-path: go/go.sum
+
+      - name: go mod tidy (diff check)
+        working-directory: go
+        run: go mod tidy -diff
+
+      - name: go vet
+        working-directory: go
+        run: go vet ./...
+
+      - name: go build
+        working-directory: go
+        run: go build ./...
+
+  csharp:
+    name: "C# · dotnet build"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        working-directory: csharp
+        run: dotnet restore
+
+      - name: Build (Release)
+        working-directory: csharp
+        run: dotnet build -c Release --no-restore
+
+  docker-build:
+    name: "Docker · compose build"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build all language images
+        run: docker compose --profile smoke build

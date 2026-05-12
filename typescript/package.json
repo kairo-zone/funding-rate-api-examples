@@ -1,0 +1,29 @@
+{
+  "name": "kairo-funding-examples",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TypeScript examples for the kairo.zone Funding API.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "example": "tsx",
+    "example:01": "tsx src/examples/01_quickstart.ts",
+    "example:02": "tsx src/examples/02_filter_by_exchange.ts",
+    "example:03": "tsx src/examples/03_get_one_symbol.ts",
+    "example:04": "tsx src/examples/04_spread_scanner.ts",
+    "example:05": "tsx src/examples/05_delta_polling.ts",
+    "example:06": "tsx src/examples/06_funding_alert.ts",
+    "example:07": "tsx src/examples/07_next_funding_countdown.ts",
+    "example:08": "tsx src/examples/08_top_funding.ts",
+    "example:09": "tsx src/examples/09_export_csv.ts",
+    "example:10": "tsx src/examples/10_brotli_etag_client.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}
