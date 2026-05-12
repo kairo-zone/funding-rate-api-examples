@@ -25,6 +25,8 @@ func run(ctx context.Context) error {
 	}
 
 	fmt.Printf("version=%d  count=%d\n", snap.Version, snap.Count)
+	fmt.Println()
+	fmt.Printf("%-12s  %-10s  %11s  %13s  %4s\n", "exchange", "base", "rate", "next_ms", "intv")
 
 	limit := len(snap.Data)
 	if limit > 5 {
@@ -32,7 +34,7 @@ func run(ctx context.Context) error {
 	}
 	for i := 0; i < limit; i++ {
 		row := snap.Data[i]
-		fmt.Printf("%s  %s  rate=%g  next=%d  interval=%dh\n",
+		fmt.Printf("%-12s  %-10s  %+11.6f  %13d  %3dh\n",
 			row.Exchange, row.Base, row.FundingRate,
 			row.NextFundingTimeMS, row.FundingIntervalHours)
 	}

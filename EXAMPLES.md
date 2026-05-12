@@ -52,6 +52,35 @@ program must exit `2`; when it responds `429` it must exit `3`.
 - **Sorting** must be stable. When two rows tie, break ties by exchange
   name ascending, then by base ascending.
 
+### Table layout
+
+Examples that print **multiple rows** of funding data (01, 02, 04, 05,
+06, 08) render a column-aligned table with a header row. Single-row
+examples (03), text-heavy ones (07), and file writers (09) keep their
+existing `key=value` or single-line formats. Example 10 prints its own
+A / B / C summary lines and is unaffected.
+
+Every language must produce byte-equivalent stdout. The cell widths and
+formats below are the canonical Python output (see
+`python/examples/04_spread_scanner.py` for the reference implementation).
+
+| Cell             | Width | Alignment | Format                                                                |
+|------------------|-------|-----------|------------------------------------------------------------------------|
+| `exchange`       | 12    | left      | string                                                                 |
+| `base` (01,05,06,08) | 10  | left    | string                                                                 |
+| `base` (02)      | 16    | left      | string (per-exchange listings can have very long bases)                |
+| `rate`           | 11    | right     | signed float, 6 decimals (`+0.000017`, `-0.001234`)                    |
+| `ann%`           | 9     | right     | signed float, 4 decimals; literal `%` is **outside** the cell, after   |
+| `intv`           | 3     | right     | integer; literal `h` is **outside** the cell, after                    |
+| `next_ms`, `event_ms` | 13 | right    | integer (Unix milliseconds)                                            |
+| `status` (06)    | 7     | left      | string `"ALERT"`                                                       |
+
+Cell separator: exactly **two spaces** (`"  "`). The header text uses
+the bare cell name (e.g. `exchange`, `rate`, `intv`); for left-aligned
+string columns the header is padded with trailing spaces to match the
+cell width, and for right-aligned number columns the header is padded
+with leading spaces so its right edge aligns with the data.
+
 ## Examples
 
 ### 01. `quickstart`
@@ -63,11 +92,18 @@ Smallest possible client: one GET, one print.
 | HTTP                 | `GET /v1/funding`                                     |
 | Env (extra)          | (none)                                                |
 
-Stdout:
+Stdout (see "Table layout" above for the cell widths and formats):
 
-- Line 1: `version=<v>  count=<n>`
-- Lines 2..6: the first 5 rows from `data`, one per line, formatted as
-  `<exchange>  <base>  rate=<funding_rate>  next=<next_funding_time_ms>  interval=<funding_interval_hours>h`.
+```
+version=<v>  count=<n>
+
+exchange      base          rate        next_ms  intv
+<ex>          <ba>          <rate>    <nextMs>  <iv>h
+...
+```
+
+Print `version=...  count=...` on the first line, a blank line, then a
+header row, then the first 5 rows from `data`.
 
 ### 02. `filter_by_exchange`
 
@@ -78,11 +114,20 @@ Demonstrates the `exchange` filter.
 | HTTP                | `GET /v1/funding?exchange=<KAIRO_EXCHANGE>`            |
 | Env (extra)         | `KAIRO_EXCHANGE` (default `bybit`)                     |
 
-Stdout:
+Stdout (table layout):
 
-- Line 1: `exchange=<x>  rows=<count>`
-- Then the first 10 rows from `data`, sorted by `base` ascending, one per
-  line as `<base>  rate=<funding_rate>  interval=<funding_interval_hours>h`.
+```
+exchange=<x>  rows=<count>
+
+base                     rate  intv
+<base>              <rate>    <iv>h
+...
+```
+
+Print `exchange=...  rows=...` on the first line, a blank line, then a
+header row, then the first 10 rows sorted by `base` ascending. The
+`base` column is 16 chars wide because per-exchange listings can have
+very long base names.
 
 ### 03. `get_one_symbol`
 
@@ -106,12 +151,20 @@ Cross-exchange spread for one base asset.
 | HTTP                | `GET /v1/funding?base=<KAIRO_BASE>`                    |
 | Env (extra)         | `KAIRO_BASE` (default `BTC`)                           |
 
-For every row, compute `annualized_pct` as defined above. Print the rows
-sorted by `funding_rate` ascending, one per line as
-`<exchange>  rate=<funding_rate>  ann=<annualized_pct>%  interval=<funding_interval_hours>h`.
+Stdout (table layout):
 
-Then print the summary line:
-`spread = <max-min> (max <maxExchange> @ <maxRate>, min <minExchange> @ <minRate>)`.
+```
+exchange             rate       ann%  intv
+<ex>           <rate>    <ann>%   <iv>h
+...
+
+spread = <max-min>  (max <maxExchange> @ <maxRate>, min <minExchange> @ <minRate>)
+```
+
+Compute `annualized_pct` per row, sort by `funding_rate` ascending,
+print the header row, the table rows, a blank line, then the summary
+line. The summary numbers are formatted as `+0.000000` (signed, 6
+decimals).
 
 ### 05. `delta_polling`
 
@@ -130,7 +183,9 @@ Behavior:
    - Sleep 30 seconds.
    - Call `?since=<cursor>`.
    - If `count == 0`, print `tick <i>: no change (version=<v>)`.
-   - Otherwise print `tick <i>: <count> changes, version=<v>`, followed by each changed row formatted as in example 01.
+   - Otherwise print `tick <i>: <count> changes, version=<v>`, then a
+     table with the same column layout as example 01 (header row +
+     rows for each changed entry).
    - Update `cursor = response.version`.
 4. Exit cleanly on SIGINT with code `0`.
 
@@ -149,7 +204,12 @@ Behavior:
 
 - Parse `KAIRO_THRESHOLD` as a decimal. Invalid input -> exit `4`.
 - For every row where `abs(funding_rate) >= threshold`:
-  - Print `ALERT  <exchange>  <base>  rate=<funding_rate>  next=<next_funding_time_ms>`.
+  - The first match prints a header row, then each matching row as a
+    table line:
+    ```
+    status   exchange      base          rate        next_ms
+    ALERT    <ex>          <base>      <rate>    <nextMs>
+    ```
   - If `KAIRO_WEBHOOK_URL` is set, `POST` JSON
     `{"exchange": ..., "base": ..., "funding_rate": ..., "next_funding_time_ms": ...}`
     to that URL with `Content-Type: application/json`. Webhook failures
@@ -184,16 +244,19 @@ Top/bottom 10 rates across the universe.
 | HTTP                | `GET /v1/funding`                                      |
 | Env (extra)         | (none)                                                 |
 
-Compute `annualized_pct` for every row. Print:
+Compute `annualized_pct` for every row. Print two tables separated by
+a blank line:
 
 ```
 TOP 10 POSITIVE
-<exchange>  <base>  rate=<funding_rate>  ann=<annualized_pct>%
-... (10 lines)
+exchange      base          rate       ann%
+<ex>          <base>      <rate>    <ann>%
+... (up to 10 lines)
 
 BOTTOM 10 NEGATIVE
-<exchange>  <base>  rate=<funding_rate>  ann=<annualized_pct>%
-... (10 lines)
+exchange      base          rate       ann%
+<ex>          <base>      <rate>    <ann>%
+... (up to 10 lines)
 ```
 
 If there are fewer than 10 positive (or negative) rows, print whatever

@@ -57,10 +57,12 @@ func run(ctx context.Context) error {
 	})
 
 	fmt.Println("TOP 10 POSITIVE")
-	printTop(positives, 10)
+	printHeader()
+	printSection(positives, 10)
 	fmt.Println()
 	fmt.Println("BOTTOM 10 NEGATIVE")
-	printTop(negatives, 10)
+	printHeader()
+	printSection(negatives, 10)
 	return nil
 }
 
@@ -74,7 +76,11 @@ func filter(in []client.FundingEntry, pred func(client.FundingEntry) bool) []cli
 	return out
 }
 
-func printTop(rows []client.FundingEntry, n int) {
+func printHeader() {
+	fmt.Printf("%-12s  %-10s  %11s  %9s\n", "exchange", "base", "rate", "ann%")
+}
+
+func printSection(rows []client.FundingEntry, n int) {
 	limit := len(rows)
 	if limit > n {
 		limit = n
@@ -82,7 +88,7 @@ func printTop(rows []client.FundingEntry, n int) {
 	for i := 0; i < limit; i++ {
 		row := rows[i]
 		ann := annualizedPct(row.FundingRate, row.FundingIntervalHours)
-		fmt.Printf("%s  %s  rate=%g  ann=%.2f%%\n",
+		fmt.Printf("%-12s  %-10s  %+11.6f  %+8.4f%%\n",
 			row.Exchange, row.Base, row.FundingRate, ann)
 	}
 }

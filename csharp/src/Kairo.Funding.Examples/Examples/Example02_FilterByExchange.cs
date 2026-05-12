@@ -9,10 +9,13 @@ namespace Kairo.Funding.Examples.Examples;
 
 /// <summary>
 /// Example 02 - filter_by_exchange: demonstrates the <c>exchange</c> query
-/// parameter; prints the first 10 rows sorted by base ascending.
+/// parameter; prints the first 10 rows sorted by base ascending in a
+/// column-aligned table.
 /// </summary>
 public static class Example02
 {
+    private const string RateFormat = "+0.000000;-0.000000;+0.000000";
+
     /// <summary>Run the exchange-filter example.</summary>
     public static async Task<int> RunAsync(string[] args, CancellationToken ct)
     {
@@ -22,7 +25,10 @@ public static class Example02
         using var client = new FundingClient();
         var snap = await client.GetSnapshotAsync(exchange: exchange, ct: ct).ConfigureAwait(false);
 
-        Console.Out.WriteLine(string.Create(CultureInfo.InvariantCulture, $"exchange={exchange}  rows={snap.Count}"));
+        var inv = CultureInfo.InvariantCulture;
+        Console.Out.WriteLine(string.Create(inv, $"exchange={exchange}  rows={snap.Count}"));
+        Console.Out.WriteLine();
+        Console.Out.WriteLine($"{"base",-16}  {"rate",11}  {"intv",4}");
 
         var rows = snap.Data
             .OrderBy(r => r.Base, StringComparer.Ordinal)
@@ -30,9 +36,9 @@ public static class Example02
             .Take(10);
         foreach (var r in rows)
         {
-            Console.Out.WriteLine(string.Create(
-                CultureInfo.InvariantCulture,
-                $"{r.Base}  rate={r.FundingRate}  interval={r.FundingIntervalHours}h"));
+            var rate = r.FundingRate.ToString(RateFormat, inv);
+            var intv = r.FundingIntervalHours.ToString(inv);
+            Console.Out.WriteLine($"{r.Base,-16}  {rate,11}  {intv,3}h");
         }
         return 0;
     }

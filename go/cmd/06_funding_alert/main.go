@@ -44,14 +44,21 @@ func run(ctx context.Context) error {
 
 	hookClient := &http.Client{Timeout: 5 * time.Second}
 
+	total := len(snap.Data)
 	matched := 0
+	headerPrinted := false
 	for _, row := range snap.Data {
 		if math.Abs(row.FundingRate) < threshold {
 			continue
 		}
+		if !headerPrinted {
+			fmt.Printf("%-7s  %-12s  %-10s  %11s  %13s\n",
+				"status", "exchange", "base", "rate", "next_ms")
+			headerPrinted = true
+		}
 		matched++
-		fmt.Printf("ALERT  %s  %s  rate=%g  next=%d\n",
-			row.Exchange, row.Base, row.FundingRate, row.NextFundingTimeMS)
+		fmt.Printf("%-7s  %-12s  %-10s  %+11.6f  %13d\n",
+			"ALERT", row.Exchange, row.Base, row.FundingRate, row.NextFundingTimeMS)
 
 		if webhook != "" {
 			if err := postWebhook(ctx, hookClient, webhook, row); err != nil {
@@ -60,8 +67,15 @@ func run(ctx context.Context) error {
 		}
 	}
 
-	fmt.Printf("matched %d/%d rows above threshold %g\n", matched, snap.Count, threshold)
+	fmt.Printf("matched %d/%d rows above threshold %s\n", matched, total, formatThreshold(threshold))
 	return nil
+}
+
+// formatThreshold prints a float the way Python's default str(float) would,
+// so the final summary line matches the Python example byte-for-byte for
+// typical threshold values such as 0.001.
+func formatThreshold(v float64) string {
+	return strconv.FormatFloat(v, 'g', -1, 64)
 }
 
 func postWebhook(ctx context.Context, hc *http.Client, url string, row client.FundingEntry) error {

@@ -53,15 +53,20 @@ func run(ctx context.Context) error {
 			fmt.Printf("tick %d: no change (version=%d)\n", i, delta.Version)
 		} else {
 			fmt.Printf("tick %d: %d changes, version=%d\n", i, delta.Count, delta.Version)
-			for _, row := range delta.Data {
-				fmt.Printf("%s  %s  rate=%g  next=%d  interval=%dh\n",
-					row.Exchange, row.Base, row.FundingRate,
-					row.NextFundingTimeMS, row.FundingIntervalHours)
-			}
+			printRows(delta.Data)
 		}
 		cursor = delta.Version
 	}
 	return nil
+}
+
+func printRows(rows []client.FundingEntry) {
+	fmt.Printf("%-12s  %-10s  %11s  %13s  %4s\n", "exchange", "base", "rate", "next_ms", "intv")
+	for _, row := range rows {
+		fmt.Printf("%-12s  %-10s  %+11.6f  %13d  %3dh\n",
+			row.Exchange, row.Base, row.FundingRate,
+			row.NextFundingTimeMS, row.FundingIntervalHours)
+	}
 }
 
 func sleepCtx(ctx context.Context, d time.Duration) error {
