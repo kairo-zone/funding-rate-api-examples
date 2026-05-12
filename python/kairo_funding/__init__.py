@@ -2,6 +2,7 @@
 
 from .client import (
     AuthError,
+    ClientLogicError,
     FundingClient,
     KairoError,
     RateLimitError,
@@ -12,6 +13,7 @@ from .client import (
 
 __all__ = [
     "AuthError",
+    "ClientLogicError",
     "FundingClient",
     "KairoError",
     "RateLimitError",
