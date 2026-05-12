@@ -23,12 +23,13 @@ def _on_sigint(_signum: int, _frame: object) -> None:
 
 
 def _print_rows(rows: list[dict]) -> None:
+    print(f"{'exchange':<12}  {'base':<10}  {'rate':>11}  {'next_ms':>13}  {'intv':>4}")
     for row in rows:
         print(
-            f"{row['exchange']}  {row['base']}  "
-            f"rate={row['funding_rate']:.6f}  "
-            f"next={row['next_funding_time_ms']}  "
-            f"interval={row['funding_interval_hours']}h"
+            f"{row['exchange']:<12}  {row['base']:<10}  "
+            f"{row['funding_rate']:>+11.6f}  "
+            f"{row['next_funding_time_ms']:>13}  "
+            f"{row['funding_interval_hours']:>3}h"
         )
 
 

@@ -23,20 +23,23 @@ def main() -> int:
     positives.sort(key=lambda r: (-r["funding_rate"], r["exchange"], r["base"]))
     negatives.sort(key=lambda r: (r["funding_rate"], r["exchange"], r["base"]))
 
+    header = f"{'exchange':<12}  {'base':<10}  {'rate':>11}  {'ann%':>9}"
     print("TOP 10 POSITIVE")
+    print(header)
     for row in positives[:10]:
         ann = annualized_pct(row["funding_rate"], row["funding_interval_hours"])
         print(
-            f"{row['exchange']}  {row['base']}  "
-            f"rate={row['funding_rate']:.6f}  ann={ann:.4f}%"
+            f"{row['exchange']:<12}  {row['base']:<10}  "
+            f"{row['funding_rate']:>+11.6f}  {ann:>+8.4f}%"
         )
     print()
     print("BOTTOM 10 NEGATIVE")
+    print(header)
     for row in negatives[:10]:
         ann = annualized_pct(row["funding_rate"], row["funding_interval_hours"])
         print(
-            f"{row['exchange']}  {row['base']}  "
-            f"rate={row['funding_rate']:.6f}  ann={ann:.4f}%"
+            f"{row['exchange']:<12}  {row['base']:<10}  "
+            f"{row['funding_rate']:>+11.6f}  {ann:>+8.4f}%"
         )
     return 0
 

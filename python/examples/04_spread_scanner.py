@@ -23,18 +23,21 @@ def main() -> int:
     if not rows:
         raise ClientLogicError(f"no rows for base={base}")
     rows.sort(key=lambda r: (r["funding_rate"], r["exchange"]))
+    print(f"{'exchange':<12}  {'rate':>11}  {'ann%':>9}  {'intv':>4}")
     for row in rows:
         ann = annualized_pct(row["funding_rate"], row["funding_interval_hours"])
         print(
-            f"{row['exchange']}  rate={row['funding_rate']:.6f}  "
-            f"ann={ann:.4f}%  interval={row['funding_interval_hours']}h"
+            f"{row['exchange']:<12}  {row['funding_rate']:>+11.6f}  "
+            f"{ann:>+8.4f}%  {row['funding_interval_hours']:>3}h"
         )
     min_row = rows[0]
     max_row = rows[-1]
     spread = max_row["funding_rate"] - min_row["funding_rate"]
+    print()
     print(
-        f"spread = {spread:.6f} (max {max_row['exchange']} @ {max_row['funding_rate']:.6f}, "
-        f"min {min_row['exchange']} @ {min_row['funding_rate']:.6f})"
+        f"spread = {spread:+.6f}  "
+        f"(max {max_row['exchange']} @ {max_row['funding_rate']:+.6f}, "
+        f"min {min_row['exchange']} @ {min_row['funding_rate']:+.6f})"
     )
     return 0
 
