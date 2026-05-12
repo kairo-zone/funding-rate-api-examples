@@ -22,7 +22,7 @@
     "example:10": "tsx src/examples/10_brotli_etag_client.ts"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^25.7.0",
     "tsx": "^4.7.0",
     "typescript": "^5.4.0"
   }
