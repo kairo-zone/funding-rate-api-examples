@@ -5,7 +5,6 @@
  * showcase the wire protocol, not hide it behind an SDK.
  */
 
-import { brotliDecompressSync } from "node:zlib";
 import { AuthError, ClientLogicError, RateLimitError, TransientError } from "./errors.js";
 import type {
   CompactRow,
@@ -91,7 +90,11 @@ export class FundingClient {
       Accept: "application/json",
       ...(init.headers ?? {}),
     };
-    if (init.acceptBrotli) headers["Accept-Encoding"] = "br";
+    // Node's fetch (undici) transparently decompresses both gzip and br on
+    // its own, so we never decode by hand. For the default path we send
+    // `identity` to opt out of compression entirely; example 10 opts back in
+    // via `acceptBrotli` to demonstrate the wire savings.
+    headers["Accept-Encoding"] = init.acceptBrotli ? "br" : "identity";
 
     let res: Response;
     try {
@@ -100,23 +103,16 @@ export class FundingClient {
       throw new TransientError(`network failure: ${(err as Error).message}`);
     }
 
-    // Read the raw wire bytes before any decoding. Node's fetch only auto-
-    // decompresses gzip/deflate; Brotli we handle by hand.
-    const rawBuf = Buffer.from(await res.arrayBuffer());
-    const wireBytes = rawBuf.length;
+    // arrayBuffer() returns the already-decompressed body when the server
+    // sent Brotli. To report on-the-wire bytes we read Content-Length.
+    const body = Buffer.from(await res.arrayBuffer());
+    const cl = res.headers.get("content-length");
+    const wireBytes = cl != null ? Number(cl) : body.length;
 
     if (res.status === 401) throw new AuthError("API key was rejected (HTTP 401)");
     if (res.status === 429) throw new RateLimitError("rate limit exceeded (HTTP 429)");
     if (res.status >= 500) throw new TransientError(`server error ${res.status}`);
 
-    let body = rawBuf;
-    if (res.headers.get("content-encoding") === "br" && body.length > 0) {
-      try {
-        body = Buffer.from(brotliDecompressSync(body));
-      } catch (err) {
-        throw new ClientLogicError(`failed to decode Brotli body: ${(err as Error).message}`);
-      }
-    }
     return { status: res.status, headers: res.headers, body, wireBytes };
   }
 
