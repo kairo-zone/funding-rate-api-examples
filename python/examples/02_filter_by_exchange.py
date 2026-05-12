@@ -18,11 +18,14 @@ def main() -> int:
     rows = FundingClient.parse_compact_rows(snapshot.get("data", []))
     count = snapshot.get("count", len(rows))
     print(f"exchange={exchange}  rows={count}")
+    print()
+    print(f"{'base':<16}  {'rate':>11}  {'intv':>4}")
     rows.sort(key=lambda r: r["base"])
     for row in rows[:10]:
         print(
-            f"{row['base']}  rate={row['funding_rate']:.6f}  "
-            f"interval={row['funding_interval_hours']}h"
+            f"{row['base']:<16}  "
+            f"{row['funding_rate']:>+11.6f}  "
+            f"{row['funding_interval_hours']:>3}h"
         )
     return 0
 

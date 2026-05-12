@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Records the kairo.zone Funding API quickstart demo as an asciinema .cast file.
 #
-# The demo runs Python examples 01, 04, and 08 through Docker Compose so
-# the only host prerequisites are asciinema, docker, and a valid API key.
+# Host prerequisites:
+#   - asciinema
+#   - python3 with httpx available (e.g. `sudo apt install python3-httpx` on
+#     Debian/Ubuntu, or `pip install httpx` in a venv)
 #
 # Usage:
 #   # Either drop your key into the repo .env file, or:
@@ -35,17 +37,18 @@ if [ -z "${KAIRO_FUNDING_API_KEY:-}" ]; then
 fi
 
 command -v asciinema >/dev/null 2>&1 || { echo "asciinema not installed" >&2; exit 1; }
-command -v docker >/dev/null 2>&1   || { echo "docker not installed"   >&2; exit 1; }
+command -v python3   >/dev/null 2>&1 || { echo "python3 not installed"   >&2; exit 1; }
+python3 -c "import httpx" 2>/dev/null || {
+    echo "error: python3 cannot import httpx." >&2
+    echo "       on Debian/Ubuntu: sudo apt install python3-httpx" >&2
+    echo "       or use a venv:    python3 -m venv .venv && .venv/bin/pip install httpx" >&2
+    exit 1
+}
 
 if [ -f "${OUTPUT}" ]; then
     echo "note: ${OUTPUT} already exists; asciinema will refuse to overwrite." >&2
     echo "      delete it first if you want a fresh take." >&2
 fi
-
-# Pre-build the python image off-camera so the recording isn't dominated
-# by Docker layer downloads. This is idempotent — Docker reuses cached layers.
-echo "Building python example image (off-camera)..."
-(cd "${REPO_ROOT}" && docker compose build python --quiet)
 
 # --- Inner demo script ----------------------------------------------------
 # Written to a temp file so asciinema's --command can invoke it cleanly
@@ -72,25 +75,25 @@ sleep 2
 echo
 echo "--- one funding rate ---"
 sleep 1
-echo "$ docker compose run --rm -e KAIRO_EXCHANGE=bybit -e KAIRO_BASE=BTC python python examples/03_get_one_symbol.py"
+echo "$ KAIRO_EXCHANGE=bybit KAIRO_BASE=BTC python3 python/examples/03_get_one_symbol.py"
 sleep 1
-docker compose run --rm -e KAIRO_EXCHANGE=bybit -e KAIRO_BASE=BTC python python examples/03_get_one_symbol.py
+KAIRO_EXCHANGE=bybit KAIRO_BASE=BTC python3 python/examples/03_get_one_symbol.py
 sleep 2
 
 echo
 echo "--- cross-exchange spread for BTC ---"
 sleep 1
-echo "$ docker compose run --rm -e KAIRO_BASE=BTC python python examples/04_spread_scanner.py"
+echo "$ KAIRO_BASE=BTC python3 python/examples/04_spread_scanner.py"
 sleep 1
-docker compose run --rm -e KAIRO_BASE=BTC python python examples/04_spread_scanner.py
+KAIRO_BASE=BTC python3 python/examples/04_spread_scanner.py
 sleep 2
 
 echo
 echo "--- bybit perp universe ---"
 sleep 1
-echo "$ docker compose run --rm -e KAIRO_EXCHANGE=bybit python python examples/02_filter_by_exchange.py"
+echo "$ KAIRO_EXCHANGE=bybit python3 python/examples/02_filter_by_exchange.py"
 sleep 1
-docker compose run --rm -e KAIRO_EXCHANGE=bybit python python examples/02_filter_by_exchange.py
+KAIRO_EXCHANGE=bybit python3 python/examples/02_filter_by_exchange.py
 sleep 2
 
 echo

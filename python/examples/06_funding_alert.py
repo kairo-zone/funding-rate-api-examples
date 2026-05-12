@@ -27,15 +27,22 @@ def main() -> int:
         rows = FundingClient.parse_compact_rows(snapshot.get("data", []))
         total = len(rows)
         matched = 0
+        header_printed = False
         with httpx.Client(timeout=5.0) as webhook:
             for row in rows:
                 if abs(row["funding_rate"]) < threshold:
                     continue
+                if not header_printed:
+                    print(
+                        f"{'status':<7}  {'exchange':<12}  {'base':<10}  "
+                        f"{'rate':>11}  {'next_ms':>13}"
+                    )
+                    header_printed = True
                 matched += 1
                 print(
-                    f"ALERT  {row['exchange']}  {row['base']}  "
-                    f"rate={row['funding_rate']:.6f}  "
-                    f"next={row['next_funding_time_ms']}"
+                    f"{'ALERT':<7}  {row['exchange']:<12}  {row['base']:<10}  "
+                    f"{row['funding_rate']:>+11.6f}  "
+                    f"{row['next_funding_time_ms']:>13}"
                 )
                 if not webhook_url:
                     continue
