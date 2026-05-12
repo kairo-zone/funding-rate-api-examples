@@ -2,6 +2,8 @@
 
 Live perpetual funding rates from 10 exchanges in one API.
 
+[![asciicast](https://asciinema.org/a/RV48zx4ZqHQHXjNX.svg)](https://asciinema.org/a/RV48zx4ZqHQHXjNX)
+
 ## kairo.zone Funding API
 
 - Production base URL: `https://api.kairo.zone`
