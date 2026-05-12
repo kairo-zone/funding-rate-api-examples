@@ -34,7 +34,7 @@ def main() -> int:
                 matched += 1
                 print(
                     f"ALERT  {row['exchange']}  {row['base']}  "
-                    f"rate={row['funding_rate']}  "
+                    f"rate={row['funding_rate']:.6f}  "
                     f"next={row['next_funding_time_ms']}"
                 )
                 if not webhook_url:

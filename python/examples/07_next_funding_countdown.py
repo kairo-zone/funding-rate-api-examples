@@ -49,7 +49,7 @@ def main() -> int:
         lines.append(
             (
                 remaining_s,
-                f"{prefix}{b} on {row['exchange']}: in {minutes}m {seconds}s, rate={row['funding_rate']}",
+                f"{prefix}{b} on {row['exchange']}: in {minutes}m {seconds}s, rate={row['funding_rate']:.6f}",
             )
         )
     lines.sort(key=lambda x: x[0])

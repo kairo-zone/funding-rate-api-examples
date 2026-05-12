@@ -26,15 +26,15 @@ def main() -> int:
     for row in rows:
         ann = annualized_pct(row["funding_rate"], row["funding_interval_hours"])
         print(
-            f"{row['exchange']}  rate={row['funding_rate']}  "
+            f"{row['exchange']}  rate={row['funding_rate']:.6f}  "
             f"ann={ann:.4f}%  interval={row['funding_interval_hours']}h"
         )
     min_row = rows[0]
     max_row = rows[-1]
     spread = max_row["funding_rate"] - min_row["funding_rate"]
     print(
-        f"spread = {spread} (max {max_row['exchange']} @ {max_row['funding_rate']}, "
-        f"min {min_row['exchange']} @ {min_row['funding_rate']})"
+        f"spread = {spread:.6f} (max {max_row['exchange']} @ {max_row['funding_rate']:.6f}, "
+        f"min {min_row['exchange']} @ {min_row['funding_rate']:.6f})"
     )
     return 0
 

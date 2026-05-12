@@ -28,7 +28,7 @@ def main() -> int:
         ann = annualized_pct(row["funding_rate"], row["funding_interval_hours"])
         print(
             f"{row['exchange']}  {row['base']}  "
-            f"rate={row['funding_rate']}  ann={ann:.4f}%"
+            f"rate={row['funding_rate']:.6f}  ann={ann:.4f}%"
         )
     print()
     print("BOTTOM 10 NEGATIVE")
@@ -36,7 +36,7 @@ def main() -> int:
         ann = annualized_pct(row["funding_rate"], row["funding_interval_hours"])
         print(
             f"{row['exchange']}  {row['base']}  "
-            f"rate={row['funding_rate']}  ann={ann:.4f}%"
+            f"rate={row['funding_rate']:.6f}  ann={ann:.4f}%"
         )
     return 0
 

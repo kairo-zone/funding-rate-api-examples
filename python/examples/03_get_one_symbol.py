@@ -23,7 +23,7 @@ def main() -> int:
     row = rows[0]
     print(
         f"{row['exchange']}  {row['base']}  "
-        f"rate={row['funding_rate']}  "
+        f"rate={row['funding_rate']:.6f}  "
         f"next={row['next_funding_time_ms']}  "
         f"interval={row['funding_interval_hours']}h  "
         f"event={row['event_time_ms']}"
