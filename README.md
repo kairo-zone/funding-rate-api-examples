@@ -2,7 +2,7 @@
 
 Live perpetual funding rates from 10 exchanges in one API.
 
-[![asciicast](https://asciinema.org/a/RV48zx4ZqHQHXjNX.svg)](https://asciinema.org/a/RV48zx4ZqHQHXjNX)
+[![asciicast](https://asciinema.org/a/vWdCmiqCXr6S1LCO.svg)](https://asciinema.org/a/vWdCmiqCXr6S1LCO)
 
 ## kairo.zone Funding API
 

@@ -21,7 +21,7 @@ def main() -> int:
     rows.sort(key=lambda r: r["base"])
     for row in rows[:10]:
         print(
-            f"{row['base']}  rate={row['funding_rate']}  "
+            f"{row['base']}  rate={row['funding_rate']:.6f}  "
             f"interval={row['funding_interval_hours']}h"
         )
     return 0
